@@ -19,33 +19,26 @@ using namespace std;
 char base_url[]="www.chitkara.edu.in";
 char *str1,*str2,*str3;
 int depth;
+int linkdepth = 0;
 int id=1;
-/*
 
-*NormalizeWord*
----------------
+//structure
 
-Description: Make sure all the Roman letters in the URL are
-of lower cases, for ease of carrying out string comparison in
-the future when trying to decide if two URL are the same or not.
-Basically a linear scan, starting from the beginning of the URL,
-is performed. Whenever a capital letter character is encountered
-(by checking its ASCII code value), it is replaced by the
-corresponding lower case letter.
+typedef struct node
+{
+    char *url;
+    int key;
+    int isvisited;
+    int depth;
+    node *next;
+    node *prev;
+};
 
-Input: input_url
 
-** Pseudo Code **
+//some extra decalarations
+node *hash1[50];
 
-(1) FOR (every character in the input string) DO
-      IF (this character is a capital letter) DO
-        Change this letter to lower case
-      END
-    DONE
 
-*****
-
-*/
 
 void NormalizeWord(char* word) {
   int i = 0;
@@ -58,46 +51,7 @@ void NormalizeWord(char* word) {
   }
 }
 
-/*
 
-*NormalizeURL*
---------------
-
-Description: Normalize the input URL string and return its validity.
-The normalization contains two major components: first, if the
-URL ends with a trailing slash '/' character, this trailing slash
-will be removed from the URL; and second, if the URL points to
-a file (with an extension), then only certain file extensions are
-accepted; currently, acceptable normal file extensions start with
-.htm, .HTM, .php, or .jsp. A URL is valid if it is long enough and,
-if pointing to a file, points to a file of acceptable format;
-otherwise the URL is considered invalid and therefore will not
-be added to the url_list for future processing.
-
-Input: input_url
-
-Output: validity of the input URL: 0 - invalid
-                                   1 - valid
-
-** Pseudo Code **
-
-(1) Return error signal if input url is too short.
-(2) IF (input url ends with '/') THEN
-      Remove the '/'
-    END
-(3) Find the positions of the last occurrences of '/' and '.'
-(4) IF (the '/' and '.' are positioned s.t. they indicate the url points to a file) THEN
-      IF (the file extension starts with .htm or .HTM or .php or .jsp) THEN
-        Do nothing...
-      ELSE
-        Return bad url signal
-      END
-    END
-(5) Return good url signal
-
-*****
-
-*/
 
 int NormalizeURL(char* URL) 
 {
@@ -143,36 +97,6 @@ int NormalizeURL(char* URL)
   return 1;
 }
 
-/*
-
-*removeWhiteSpace*
-------------------
-
-Description: Removes the white space characters from the input
-string buffer that contains the html content. This function
-basically scans through the entire html buffer content character
-by character, and abandons any white space character it encounters.
-The ASCII code of the characters are used to determine whether
-a character is a white space or not; Characters with ASCII code
-values below 32 are considered white space characters, and are
-thus removed.
-
-Input: string_buffer
-
-** Pseudo Code **
-
-(1) Create a target buffer one character than the input buffer, and clear it
-(2) FOR (Every character in the input buffer) DO
-      IF (the current character is not a while space character) THEN
-        Append it to the end of the target buffer
-      END
-    DONE
-(3) Overwrite the input buffer with the target buffer
-(4) Release targer buffer
-    
-*****
-
-*/
 
 void removeWhiteSpace(char* html) 
 {
@@ -191,82 +115,6 @@ void removeWhiteSpace(char* html)
   free(buffer); free(p);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// FILE: html.c
-
-// HTML parser utility implementation
-// see html.h for detail usage
-
-/*
-
-*GetNextURL*
-------------
-
-Description: Given a HTML string buffer, the URL of the HTML,
-and a position index, find the closest URL after the position
-and copy the URL into the result buffer, which is also an input
-argument. This function is the main component of the HTML parser.
-This function is designed such that it is meant to be repeatedly 
-called toextract URLs from the HTML one at a time, starting from the 
-beginning of the HTML and terminating when the end of the HTML
-is reached. The return value of this function is meant for the
-repeated calls of this function; the real return value is the
-third input argument, which is the result buffer, in which a
-new URL will be written if one is found. This function can 
-handle normal absolute and relative URLs generally  found in
-the <a href=""> tags; however, more extreme cases, like this
-<a href="../../../a.txt">, are not currently being extracted.
-
-Input: html_buffer, urlofthispage, result_buffer, current_position
-
-Return: Position of the URL found
-
-** Pseudo Code **
-
-(1) IF (first call) THEN
-      Remove white space characters from the page
-    END
-(2) Find the <a> or <A> html tags by scanning through the html text
-(3) Keep going until we may have found a URL
-(4) IF (It actually is NOT a URL, which has multiple possibilities) THEN
-      Recursively call self from the next position
-    END
-(5) IF (It is an absolute URL) THEN
-      Set result buffer to contain this URL
-      Return the current position
-    ELSE (It is an relative URL) THEN
-      Produce the result URL by combining the relative URL with the urlofthispage
-      Set result buffer to contain this URL
-      Return the current position
-    END
-(7) Return -1 to signal completion
-
-*****
-
-*/
 
 int GetNextURL(char* html, char* urlofthispage, char* result, int pos) 
 {
@@ -378,12 +226,85 @@ int GetNextURL(char* html, char* urlofthispage, char* result, int pos)
   }    
   return -1;
 }
-void movetoram(char p[],char seed[50])
+
+
+int genereateKey(char key[10000])
+{
+    int sum = 0;
+    for(int i=0;key[i]!='\0';i++)
+    {
+        sum+=key[i];
+    }
+    while(!(sum<=50))
+    sum = sum/10;
+    return sum;
+}
+node* createLinkList(char *links[100])
+{
+	node *new_node;
+	new_node = (node *)malloc(sizeof(node));
+	node *head = new_node;
+	node *prev = NULL;
+	new_node->prev = prev;
+	for(int i=0;i<100;i++)
+	{
+		if(genereateKey(links[i]) != 0)
+		{
+			new_node->url = links[i];
+			new_node->key = genereateKey(links[i]);
+			new_node->isvisited = 0;//initially it is not visited
+			new_node->depth = linkdepth;
+			prev = new_node;
+			new_node = (node *)malloc(sizeof(node));
+			prev->next = new_node;
+		}
+	}
+	linkdepth++;
+	prev->next = NULL;
+	return head;
+}
+
+void arrangeinhash(node *head)
+{
+	node *temp = head,*new_node;
+	node *prev;
+	while(temp)
+	{	
+		new_node = (node *)malloc(sizeof(node));
+		new_node->url = temp->url;
+		new_node->key = temp->key;
+		new_node->isvisited = temp->isvisited;
+		new_node->depth = temp->depth;
+		if(hash1[temp->key]==NULL)
+		{
+			hash1[temp->key] = new_node;
+			new_node->prev = NULL;
+			new_node->next = NULL;
+		}
+		else
+		{
+			node *addr = hash1[temp->key];
+			while(addr->next!=NULL)
+			{
+				addr = addr->next;
+			}
+			//cout<<"got the NULL";
+			addr->next = new_node;
+			new_node->prev = addr;
+			new_node->next = NULL;
+		}
+		temp = temp->next;
+	}
+	cout<<"successfully created hash table";
+}
+
+
+char** extractlinks(char *path,char *seed)
 {
     struct stat st;
-    stat(p,&st);
+    stat(path,&st);
     int file_size = st.st_size;
-    ifstream file(p);
+    ifstream file(path);
     char ch;
     char sourcecode[file_size];
     int it=0;
@@ -394,33 +315,61 @@ void movetoram(char p[],char seed[50])
         it++;
     }
     char *m = (char *)malloc(file_size*sizeof(char));
-    int n=GetNextURL(sourcecode,seed,m,0);
+    char **links = (char **)calloc(100,sizeof(char *));
     for(int i=0;i<100;i++)
     {
-        cout<<m<<endl;
-        n = GetNextURL(sourcecode,seed,m,n);
+    		links[i] = (char *)malloc(file_size*sizeof(char));
     }
+    int flag = 0;
+    int n=GetNextURL(sourcecode,seed,m,0);
+    // m is my extracted link from webpage
+    
+     for(int i=0;i<100;i++)
+     {
+        for(int i=0;i<100;i++)
+        {
+            if(strcmp(m,*(links+i)) == 0)
+            {
+            	flag++;
+            	break;
+            }
+        }
+        if(flag == 0)
+        {
+            strcpy(*(links+i),m);
+        }
+        else
+        continue;
+        
+        n = GetNextURL(sourcecode,seed,m,n);
+     }
+     
+   	return links;
 }
-void createpath(char seed[50])
+
+char* copyfile(char *url)
 {
-    char path[100];
-    strcat(path,"store/");
-    strcat(path,"test");
+    char *path = (char *)malloc(sizeof(char)*100);
     sprintf(path,"store/%d.txt",id);
     id++;
-    ifstream str1("store/temp.txt");
-    ofstream str2(path);
-    str2<<seed;
+    ifstream file1("store/temp.txt");
+    ofstream file2(path);
+	/*here we can add extra information about the file if needed*/ 
+	file2<<url<<endl;
     char ch;
-   while(!str1.eof())
+   while(!file1.eof())
     {
-        str1>>ch;
-        str2<<ch;
+        file1>>ch;
+        file2<<ch;
     }
-    str2.close();
-    str1.close();
-    movetoram(path,seed);
+    file2.close();
+    file1.close();
+     
+    return path;
+    //node *ptr = movetoram(path,seed);
+    //return ptr;
 }
+
 void getPage(char url[50])
 {
 char urlbuffer[Url_Length+300]={0}; 
@@ -432,9 +381,8 @@ strcat(urlbuffer, url);
 system(urlbuffer);
 
 //making new file by copying data from temp file
-createpath(url);
-
 }
+/*---------------------------------------------------------------*/
 void testDir(char *dir)
 {
   struct stat statbuf;
@@ -473,6 +421,7 @@ void checkDepth()
   else
   {
     printf("Invalid depth");
+    exit(1);
   }
 }
 void validateUrl()
@@ -482,11 +431,13 @@ strcat(str,str1);
     if(!system(str))
     {
     printf("Valid URL");
-    getPage(str1);
     }
   else
     printf("Invalid URL");
 }
+
+// it is a simple crawler not a big thing
+// follow me on github aniketchanana05
 void checkUrl()
 {
 int i,flag=0;
@@ -509,8 +460,8 @@ void checkCreteria(int n)
   if(n==4)
   {
 checkDepth();
-checkUrl();
 testDir(str3);
+checkUrl();
   }
   else
   {
@@ -524,5 +475,49 @@ int main(int argc,char *argv[])
   str3=argv[3];//store directory path
 
   checkCreteria(argc);
-return 0;
+  
+  //working for one link
+  
+  //fetch the given page from iternet
+  getPage(str1);
+  
+  //transfer the page to given id .txt
+  char *loc = copyfile(str1);
+  
+  //loc is the location of the file we have just stored in our store
+  //extractlinks from this stored file
+  char **links = extractlinks(loc,str1);
+  //these are all the links fetched from the given one url arranged ina linklist
+  node *head = createLinkList(links);
+  //arrange in global hashtable
+  arrangeinhash(head);
+  
+  
+  //todo
+  //1. traverse the link list and get the pages from give link list
+  //2. extract the links from the page
+  //3. now got the links check whether they are repeated or not from hash table
+  //if repeated then drop it else put in link list
+  //extract the links till depth dosenot overflow
+  
+  node *start = head;
+  while(start!=NULL)
+  {
+	if(start->isvisited == 0)
+	{
+		getPage(start->url);
+		loc = copyfile(start->url);
+		links = extractlinks(loc,start->url);
+		node *newhead = createLinkList(links);
+		while(head->next != NULL)
+		{
+			head = head->next;
+		}
+		head->next = newhead;
+		start->isvisited = 1;
+	}
+		start = start->next;
+  }
+  
+ return 0;
 }
